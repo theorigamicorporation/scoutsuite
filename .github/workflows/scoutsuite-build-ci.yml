@@ -18,11 +18,13 @@ jobs:
           git fetch --tags
           LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
           echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
+          echo "The latest official tag version is $LATEST_TAG."
 
       - name: Get current tag version of Docker image
         run: |
           CURRENT_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.DOCKERHUB_TOKEN }}" "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/scoutsuite/tags?page_size=1" | jq -r '.results[0].name')
           echo "CURRENT_TAG=${CURRENT_TAG}" >> $GITHUB_ENV
+          echo "The current tag version of the Docker image is $CURRENT_TAG."
 
       - name: Compare tags and decide whether to build
         run: |
@@ -56,4 +58,4 @@ jobs:
       - name: No new version
         if: env.build == 'false'
         run: |
-          echo "No new version found. Skipping the build process."
+          echo "Current and latest versions are the same - ${{ env.LATEST_TAG }}. Skipping the build process."

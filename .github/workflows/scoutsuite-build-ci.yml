@@ -32,7 +32,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./ScoutSuite
+          context: ./ScoutSuite/docker
           push: true
           file: ./ScoutSuite/docker/Dockerfile
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/scoutsuite:${{ env.LATEST_TAG }}

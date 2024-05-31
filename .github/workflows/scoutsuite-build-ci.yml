@@ -10,12 +10,28 @@ jobs:
       - name: Clone ScoutSuite official repository
         run: git clone https://github.com/nccgroup/ScoutSuite.git
 
-      - name: Fetch the latest tag
+      - name: Fetch latest tag from remote repository
+        id: fetch-latest-tag
         run: |
-          cd ScoutSuite
-          git fetch --tags
-          LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
+          LATEST_TAG=$(git ls-remote --tags origin | awk '{print $2}' | cut -d '/' -f 3 | cut -d '^' -f 1 | sort -V | tail -n 1)
+          echo "::set-output name=latest_tag::$LATEST_TAG"
+
+      - name: Get current tag version of Docker image
+        id: get-current-tag
+        run: |
+          CURRENT_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.DOCKERHUB_TOKEN }}" "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/scoutsuite/tags?page_size=1" | jq -r '.results[0].name')
+          echo "::set-output name=current_tag::$CURRENT_TAG"
+        shell: bash
+
+      - name: Compare tags and decide whether to build
+        id: compare-tags
+        run: |
+          if [ "${{ steps.fetch-latest-tag.outputs.latest_tag }}" == "${{ steps.get-current-tag.outputs.current_tag }}" ]; then
+            echo "::set-output name=build::false"
+          else
+            echo "::set-output name=build::true"
+          fi
+        shell: bash
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -30,9 +46,15 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push
+        if: steps.compare-tags.outputs.build == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ./ScoutSuite/docker
           push: true
           file: ./ScoutSuite/docker/Dockerfile
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/scoutsuite:${{ env.LATEST_TAG }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/scoutsuite:${{ steps.fetch-latest-tag.outputs.latest_tag }}
+
+      - name: No new version
+        if: steps.compare-tags.outputs.build == 'false'
+        run: |
+          echo "No new version found. Skipping the build process."

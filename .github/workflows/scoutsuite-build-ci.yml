@@ -1,6 +1,8 @@
-name: Build & Push 🚀 | ScoutSuite ⎈
+name: Build & Push 🚀 | ScoutSuite Official Image ⎈
 
 on:
+  schedule:
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 jobs:
@@ -18,13 +20,11 @@ jobs:
           echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
 
       - name: Get current tag version of Docker image
-        id: get-current-tag
         run: |
           CURRENT_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.DOCKERHUB_TOKEN }}" "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/scoutsuite/tags?page_size=1" | jq -r '.results[0].name')
           echo "CURRENT_TAG=${CURRENT_TAG}" >> $GITHUB_ENV
 
       - name: Compare tags and decide whether to build
-        id: compare-tags
         run: |
           if [ "${{ env.LATEST_TAG }}" == "${{ env.CURRENT_TAG }}" ]; then
             echo "build=false" >> $GITHUB_ENV
